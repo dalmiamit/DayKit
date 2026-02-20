@@ -161,6 +161,51 @@ export async function registerRoutes(
     res.sendStatus(204);
   });
 
+  // Recurring Events
+  app.get(api.recurringEvents.list.path, requireAuth, async (req, res) => {
+    const userId = getUserId(req);
+    const events = await storage.getRecurringEvents(userId);
+    res.json(events);
+  });
+
+  app.post(api.recurringEvents.create.path, requireAuth, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const input = api.recurringEvents.create.input.parse(req.body);
+      const event = await storage.createRecurringEvent({ ...input, userId });
+      res.status(201).json(event);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: "Validation error" });
+      throw err;
+    }
+  });
+
+  app.post(api.recurringEvents.toggle.path, requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getItem(id);
+    if (!existing || existing.userId !== getUserId(req)) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    try {
+      const { date } = req.body;
+      if (!date) return res.status(400).json({ message: "Date required" });
+      const result = await storage.toggleHabitCompletion(id, date);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ message: "Failed to toggle" });
+    }
+  });
+
+  app.delete(api.recurringEvents.delete.path, requireAuth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const existing = await storage.getItem(id);
+    if (!existing || existing.userId !== getUserId(req)) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+    await storage.deleteRecurringEvent(id);
+    res.sendStatus(204);
+  });
+
   // Scheduled items for a given date
   app.get(api.items.scheduled.path, requireAuth, async (req, res) => {
     const userId = getUserId(req);
@@ -189,9 +234,10 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Item is already that type" });
       }
       const validConversions: Record<string, string[]> = {
-        todo: ["habit", "event"],
-        event: ["habit"],
-        habit: ["todo"],
+        todo: ["habit", "event", "recurring_event"],
+        event: ["habit", "recurring_event"],
+        recurring_event: ["habit", "todo"],
+        habit: ["todo", "recurring_event"],
       };
       if (!validConversions[existing.type]?.includes(newType)) {
         return res.status(400).json({ message: `Cannot convert ${existing.type} to ${newType}` });

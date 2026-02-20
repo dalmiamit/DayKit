@@ -1,18 +1,27 @@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuLabel, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ArrowRightLeft, Repeat, CalendarDays, CheckSquare } from "lucide-react";
+import { ArrowRightLeft, Repeat, CalendarDays, CheckSquare, RefreshCw } from "lucide-react";
 import { useConvertItem } from "@/hooks/use-convert-item";
 
-const conversionOptions: Record<string, { type: "todo" | "habit" | "event"; label: string; icon: typeof Repeat }[]> = {
+type ItemType = "todo" | "habit" | "event" | "recurring_event";
+
+const conversionOptions: Record<string, { type: ItemType; label: string; icon: typeof Repeat }[]> = {
   todo: [
     { type: "habit", label: "Habit", icon: Repeat },
-    { type: "event", label: "Event", icon: CalendarDays },
+    { type: "event", label: "One-off Event", icon: CalendarDays },
+    { type: "recurring_event", label: "Recurring Event", icon: RefreshCw },
   ],
   event: [
     { type: "habit", label: "Habit", icon: Repeat },
+    { type: "recurring_event", label: "Recurring Event", icon: RefreshCw },
+  ],
+  recurring_event: [
+    { type: "habit", label: "Habit", icon: Repeat },
+    { type: "todo", label: "To-Do", icon: CheckSquare },
   ],
   habit: [
     { type: "todo", label: "To-Do", icon: CheckSquare },
+    { type: "recurring_event", label: "Recurring Event", icon: RefreshCw },
   ],
 };
 

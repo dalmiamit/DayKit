@@ -111,10 +111,45 @@ export const api = {
     convert: {
       method: 'POST' as const,
       path: '/api/items/:id/convert',
-      input: z.object({ type: z.enum(["todo", "habit", "event"]) }),
+      input: z.object({ type: z.enum(["todo", "habit", "event", "recurring_event"]) }),
       responses: {
         200: z.custom<Item>(),
         400: z.object({ message: z.string() }),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  recurringEvents: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/recurring-events',
+      responses: {
+        200: z.array(z.custom<Item & { completions: ItemCompletion[] }>()),
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/recurring-events',
+      input: insertItemSchema,
+      responses: {
+        201: z.custom<Item>(),
+        400: errorSchemas.validation,
+      },
+    },
+    toggle: {
+      method: 'POST' as const,
+      path: '/api/recurring-events/:id/toggle',
+      input: z.object({ date: z.string() }),
+      responses: {
+        200: z.object({ completed: z.boolean() }),
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/recurring-events/:id',
+      responses: {
+        204: z.void(),
         404: errorSchemas.notFound,
       },
     },
