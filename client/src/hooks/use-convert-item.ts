@@ -6,6 +6,7 @@ const typeLabels: Record<string, string> = {
   todo: "To-Do",
   habit: "Habit",
   event: "Event",
+  recurring_event: "Recurring Event",
 };
 
 export function useConvertItem() {
@@ -13,7 +14,7 @@ export function useConvertItem() {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ id, type }: { id: number; type: "todo" | "habit" | "event" }) => {
+    mutationFn: async ({ id, type }: { id: number; type: "todo" | "habit" | "event" | "recurring_event" }) => {
       const url = buildUrl(api.items.convert.path, { id });
       const res = await fetch(url, {
         method: "POST",
@@ -30,6 +31,7 @@ export function useConvertItem() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: [api.habits.list.path] });
       queryClient.invalidateQueries({ queryKey: [api.todos.list.path] });
+      queryClient.invalidateQueries({ queryKey: [api.recurringEvents.list.path] });
       queryClient.invalidateQueries({ queryKey: ["/api/items/scheduled"] });
       queryClient.invalidateQueries({ queryKey: ["/api/items/backlog"] });
       toast({

@@ -14,6 +14,10 @@ export interface IStorage {
   deleteHabit(id: number): Promise<void>;
   toggleHabitCompletion(itemId: number, date: string, notes?: string): Promise<{ completed: boolean }>;
 
+  getRecurringEvents(userId: string): Promise<(Item & { completions: ItemCompletion[] })[]>;
+  createRecurringEvent(data: InsertItem & { userId: string }): Promise<Item>;
+  deleteRecurringEvent(id: number): Promise<void>;
+
   getTodos(userId: string): Promise<Item[]>;
   getTodo(id: number): Promise<Item | undefined>;
   createTodo(todo: InsertItem & { userId: string }): Promise<Item>;
@@ -82,6 +86,34 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getRecurringEvents(userId: string): Promise<(Item & { completions: ItemCompletion[] })[]> {
+    const results = await db.query.items.findMany({
+      where: and(
+        eq(items.userId, userId),
+        eq(items.type, "recurring_event"),
+        eq(items.status, "active")
+      ),
+      with: { completions: true },
+      orderBy: desc(items.createdAt),
+    });
+    return results;
+  }
+
+  async createRecurringEvent(data: InsertItem & { userId: string }): Promise<Item> {
+    const [item] = await db.insert(items).values({
+      ...data,
+      type: "recurring_event",
+    }).returning();
+    return item;
+  }
+
+  async deleteRecurringEvent(id: number): Promise<void> {
+    await db.transaction(async (tx) => {
+      await tx.delete(itemCompletions).where(eq(itemCompletions.itemId, id));
+      await tx.delete(items).where(eq(items.id, id));
+    });
+  }
+
   async getTodos(userId: string): Promise<Item[]> {
     return await db.select().from(items).where(and(
       eq(items.userId, userId),
@@ -126,8 +158,14 @@ export class DatabaseStorage implements IStorage {
       updates.recurrenceRule = "daily";
       updates.status = "active";
       updates.completedAt = null;
+    } else if (newType === "recurring_event") {
+      updates.recurrenceRule = updates.recurrenceRule || "sunday";
+      updates.status = "active";
+      updates.completedAt = null;
     } else if (newType === "todo") {
       updates.recurrenceRule = null;
+      updates.scheduledDate = null;
+      updates.scheduledTime = null;
       updates.status = "active";
       updates.completedAt = null;
     } else if (newType === "event") {
